@@ -65,6 +65,44 @@ class TripPlanner:
         # TODO: implement this method
 
 
+
+        
+
+    def trips_for_next_hour(self) -> pd.DataFrame:
+        """Filters trips to include only those departing within the next hour."""
+        now = datetime.now()
+        one_hour_later = now + timedelta(hours=1)
+        trips = []
+
+        for trip in self.trips:
+            leglist = trip.get("LegList").get("Leg")
+            df_legs = pd.DataFrame(leglist)
+            df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
+            df_stops["depTime"] = pd.to_datetime(df_stops["depDate"] + " " + df_stops["depTime"])
+            # Filter trips within the next hour
+            df_filtered = df_stops[
+                (df_stops["depTime"] >= now) & (df_stops["depTime"] <= one_hour_later)
+            ]
+            if not df_filtered.empty:
+                trips.append(df_filtered)
+        return trips
+
+    def trips_for_specific_stop(self, stop_name: str) -> pd.DataFrame:
+        """Filters trips to include only those that stop at the specified stop name."""
+        trips = []
+
+        for trip in self.trips:
+            leglist = trip.get("LegList").get("Leg")
+            df_legs = pd.DataFrame(leglist)
+            df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
+            df_stops["time"] = df_stops["arrTime"].fillna(df_stops["depTime"])
+            df_stops["date"] = df_stops["arrDate"].fillna(df_stops["depDate"])
+            # Filter trips that stop at the specified stop
+            df_filtered = df_stops[df_stops["name"].str.contains(stop_name, case=False, na=False)]
+            if not df_filtered.empty:
+                trips.append(df_filtered)
+        return trips
+
 if __name__ == "__main__":
     data = TripData(
         740000190,
