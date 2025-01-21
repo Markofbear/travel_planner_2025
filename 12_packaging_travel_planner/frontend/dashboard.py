@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 from plot_maps import TripMap
 from utils.constants import StationIds
-from backend.connect_to_api import TripPlanner
-
+from backend.connect_to_api import ResRobot
 
 trip_map = TripMap(
     origin_id=StationIds.MALMO.value, destination_id=StationIds.UMEA.value
