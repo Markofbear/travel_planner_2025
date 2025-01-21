@@ -10,16 +10,7 @@ class ResRobot:
     API_KEY = os.getenv("API_KEY")
 
     def trips(self, origin_id=740000001, destination_id=740098001):
-        """
-        Fetch trip data between origin and destination IDs.
-
-        Parameters:
-            origin_id (int): Origin stop ID.
-            destination_id (int): Destination stop ID.
-
-        Returns:
-            dict: JSON response from the ResRobot API.
-        """
+        """origing_id and destination_id can be found from Stop lookup API"""
         url = f"https://api.resrobot.se/v2.1/trip?format=json&originId={origin_id}&destId={destination_id}&passlist=true&showPassingPoints=true&accessId={self.API_KEY}"
 
         try:
@@ -29,7 +20,6 @@ class ResRobot:
             return response.json()
         except requests.exceptions.RequestException as err:
             print(f"Network or HTTP error: {err}")
-            return None
 
     def access_id_from_location(self, location):
         url = f"https://api.resrobot.se/v2.1/location.name?input={location}&format=json&accessId={self.API_KEY}"
