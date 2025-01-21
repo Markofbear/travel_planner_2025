@@ -3,6 +3,8 @@ import pandas as pd
 from plot_maps import TripMap
 from utils.constants import StationIds
 from backend.connect_to_api import ResRobot
+from backend.trips import TripPlanner
+
 
 trip_map = TripMap(
     origin_id=StationIds.MALMO.value, destination_id=StationIds.UMEA.value
