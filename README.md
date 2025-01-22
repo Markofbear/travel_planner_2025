@@ -1,2 +1,1 @@
-# travel_planner_2025
-school group project
+# Group Project Travel Planner
