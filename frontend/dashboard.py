@@ -21,8 +21,8 @@ if __name__ == "__main__":
 st.title("Tidtabell för kommunaltrafik")
 st.write("Visa avgående tåg, bussar eller spårvagnar för en specifik hållplats")
 
-origin_id = st.text_input("Ange origin ID (ursprung):", value="740000190")
-destination_id = st.text_input("Ange destination ID:", value="740000191")
+origin_id = st.text_input("Ange origin ID (ursprung):", value=str(StationIds.MALMO.value))
+destination_id = st.text_input("Ange destination ID:", value=str(StationIds.UMEA.value))
 stop_name = st.text_input("Filtrera på hållplatsens namn (valfritt):", value="")
 trip_planner = TripPlanner(origin_id, destination_id)
 
@@ -37,32 +37,27 @@ if st.button("Hämta tidtabell"):
         st.write("### Trip 1")
 
         try:
-            leg_count = trip_planner.count_legs(trip["trip"])
-            st.write(f"Number of legs: {leg_count}")
+            stop_count = trip_planner.count_stops(trip["trip"])
+            st.write(f"Number of stops: {stop_count}")
         except Exception as e:
-            st.write(f"Could not calculate legs for Trip 1: {e}")
+            st.write(f"Could not calculate stops for Trip 1: {e}")
 
-        filtered_stops = trip.get("filtered_stops")
-        if filtered_stops is not None and not filtered_stops.empty:
-            try:
-                filtered_stops["time_remaining"] = (
-                    pd.to_datetime(filtered_stops["time"]) - pd.Timestamp.now()
-                ).dt.seconds // 60
-                st.dataframe(
-                    filtered_stops[
-                        [
-                            "name",
-                            "time",
-                            "date",
-                            "depTime",
-                            "arrTime",
-                            "time_remaining",
-                        ]
+        try:
+            full_trip = trip_planner.next_available_trip()
+            st.write("#### Full Trip Stops")
+            st.dataframe(
+                full_trip[
+                    [
+                        "name",
+                        "time",
+                        "date",
+                        "depTime",
+                        "arrTime",
+                        "leg_name",
                     ]
-                )
-            except Exception as e:
-                st.write(f"Error calculating 'time_remaining' for Trip 1: {e}")
-        else:
-            st.write("No stops found or data is invalid.")
+                ]
+            )
+        except Exception as e:
+            st.write(f"Error displaying full trip stops: {e}")
     else:
         st.write("Inga avgångar hittades.")

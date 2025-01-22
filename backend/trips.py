@@ -13,13 +13,21 @@ class TripPlanner:
     def next_available_trip(self) -> pd.DataFrame:
         if not self.trips:
             return pd.DataFrame()
+        
         next_trip = self.trips[0]
         leglist = next_trip.get("LegList", {}).get("Leg", [])
-        df_legs = pd.DataFrame(leglist)
-        df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
-        df_stops["time"] = df_stops["arrTime"].fillna(df_stops["depTime"])
-        df_stops["date"] = df_stops["arrDate"].fillna(df_stops["depDate"])
-        return df_stops[
+        
+        all_stops = []
+        for leg in leglist:
+            stops = pd.json_normalize(leg["Stops"], "Stop", errors="ignore")
+            stops["time"] = stops["arrTime"].fillna(stops["depTime"])
+            stops["date"] = stops["arrDate"].fillna(stops["depDate"])
+            stops["leg_name"] = leg.get("name", "")
+            all_stops.append(stops)
+
+        full_trip = pd.concat(all_stops, ignore_index=True)
+
+        return full_trip[
             [
                 "name",
                 "extId",
@@ -31,6 +39,7 @@ class TripPlanner:
                 "arrDate",
                 "time",
                 "date",
+                "leg_name",
             ]
         ]
 
@@ -63,8 +72,15 @@ class TripPlanner:
                 return [{"trip": trip, "filtered_stops": df_filtered}]
         return []
 
-    def count_legs(self, trip):
+    def count_stops(self, trip):
+        """
+        Counts the total number of stops in the given trip by aggregating all stops from each leg.
+        """
         leglist = trip.get("LegList", {}).get("Leg", [])
-        if isinstance(leglist, list):
-            return len(leglist)
-        return 0
+        total_stops = 0
+
+        for leg in leglist:
+            stops = pd.json_normalize(leg["Stops"], "Stop", errors="ignore")
+            total_stops += len(stops)
+
+        return total_stops
