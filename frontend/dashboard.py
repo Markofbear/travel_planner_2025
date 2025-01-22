@@ -2,38 +2,30 @@ import streamlit as st
 import pandas as pd
 from plot_maps import TripMap
 from utils.constants import StationIds
-from backend.connect_to_api import ResRobot
 from backend.trips import TripPlanner
-
 
 trip_map = TripMap(
     origin_id=StationIds.MALMO.value, destination_id=StationIds.UMEA.value
 )
-
 
 def main():
     st.markdown("# Reseplanerare")
     st.markdown(
         "Den här dashboarden syftar till att både utforska data för olika platser, men ska även fungera som en reseplanerare där du får välja och planera din resa."
     )
-
     trip_map.display_map()
-
 
 if __name__ == "__main__":
     main()
 
-
-# Initialize the TripPlanner
 st.title("Tidtabell för kommunaltrafik")
 st.write("Visa avgående tåg, bussar eller spårvagnar för en specifik hållplats")
 
-origin_id = st.text_input("Ange origin ID (ursprung):", value="740000190")
-destination_id = st.text_input("Ange destination ID:", value="740000191")
+origin_id = st.text_input("Ange origin ID (ursprung):", value=str(StationIds.MALMO.value))
+destination_id = st.text_input("Ange destination ID:", value=str(StationIds.UMEA.value))
 stop_name = st.text_input("Filtrera på hållplatsens namn (valfritt):", value="")
 trip_planner = TripPlanner(origin_id, destination_id)
 
-# Fetch and filter trips
 if st.button("Hämta tidtabell"):
     if stop_name:
         trips = trip_planner.trips_for_specific_stop(stop_name)
@@ -41,20 +33,31 @@ if st.button("Hämta tidtabell"):
         trips = trip_planner.trips_for_next_hour()
 
     if trips:
-        for i, trip in enumerate(trips):
-            st.write(f"### Trip {i + 1}")
-            trip["time_remaining"] = (pd.to_datetime(trip["time"]) - pd.Timestamp.now()).dt.seconds // 60
+        trip = trips[0]  
+        st.write("### Trip 1")
+
+        try:
+            stop_count = trip_planner.count_stops(trip["trip"])
+            st.write(f"Number of stops: {stop_count}")
+        except Exception as e:
+            st.write(f"Could not calculate stops for Trip 1: {e}")
+
+        try:
+            full_trip = trip_planner.next_available_trip()
+            st.write("#### Full Trip Stops")
             st.dataframe(
-                trip[
+                full_trip[
                     [
                         "name",
                         "time",
                         "date",
                         "depTime",
                         "arrTime",
-                        "time_remaining",
+                        "leg_name",
                     ]
                 ]
             )
+        except Exception as e:
+            st.write(f"Error displaying full trip stops: {e}")
     else:
         st.write("Inga avgångar hittades.")
