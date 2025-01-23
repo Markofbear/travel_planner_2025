@@ -5,22 +5,11 @@ from utils.constants import StationIds
 from backend.connect_to_api import ResRobot
 from backend.trips import TripPlanner
 
-trip_map = TripMap(
-    origin_id=StationIds.MALMO.value, destination_id=StationIds.UMEA.value
-)
-
 def main():
-    st.markdown("# Reseplanerare")
-    st.markdown(
-        "Den här dashboarden syftar till att både utforska data för olika platser, men ska även fungera som en reseplanerare där du får välja och planera din resa."
-    )
-    trip_map.display_map()
 
-if __name__ == "__main__":
-    main()
 
-st.title("Tidtabell för kollektivtrafik")
-st.write("Visa avgående tåg, bussar eller spårvagnar för en specifik hållplats")
+    st.title("Tidtabell för kollektivtrafik")
+    st.write("Visa avgående tåg, bussar eller spårvagnar för en specifik hållplats")
 
 origin_name = st.text_input("Från:", value="Göteborg", key="origin_name")
 destination_name = st.text_input("Till:", value="Malmö", key="destination_name")
@@ -63,6 +52,11 @@ if "destination_stops" in st.session_state and st.session_state.destination_stop
 if "origin_id" in st.session_state and "destination_id" in st.session_state:
     st.write(f"Valt ursprung-ID: {st.session_state.origin_id}")
     st.write(f"Valt destinations-ID: {st.session_state.destination_id}")
+    trip_map = TripMap(
+        origin_id=st.session_state.origin_id, destination_id=st.session_state.destination_id
+    )
+    trip_map.display_map()
+
     if st.button("Hämta tidtabell", key="fetch_schedule"):
         trip_planner = TripPlanner(st.session_state.origin_id, st.session_state.destination_id)
         trips = trip_planner.trips_for_next_hour()
@@ -86,3 +80,6 @@ if "origin_id" in st.session_state and "destination_id" in st.session_state:
                 )
         else:
             st.write("Inga resor hittades inom den närmsta timmen.")
+
+if __name__ == "__main__":
+    main()
