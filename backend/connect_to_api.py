@@ -46,6 +46,48 @@ class ResRobot:
         response = requests.get(url)
         result = response.json()
         return result
+    
+    def lookup_stop(self, stop_name: str) -> list:
+        """Search for stops based on the stop name using fuzzy matching."""
+        url = f"https://api.resrobot.se/v2.1/location.name"
+        params = {
+            "input": f"{stop_name}?",  # Frågetecknet läggs här för fuzzy matching
+            "format": "json",          # Tvinga API:et att returnera JSON
+            "accessId": self.API_KEY,
+        }
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            # Kontrollera efter stopLocationOrCoordLocation
+            if "stopLocationOrCoordLocation" in data:
+                stop_locations = data["stopLocationOrCoordLocation"]
+                results = []
+                for location in stop_locations:
+                    # Iterera över både StopLocation och CoordLocation
+                    if "StopLocation" in location:
+                        stop = location["StopLocation"]
+                        results.append({
+                            "name": stop["name"],
+                            "id": stop["extId"],
+                            "lon": stop["lon"],
+                            "lat": stop["lat"]
+                        })
+                    elif "CoordLocation" in location:
+                        coord = location["CoordLocation"]
+                        results.append({
+                            "name": coord["name"],
+                            "id": coord["id"],
+                            "lon": coord["lon"],
+                            "lat": coord["lat"]
+                        })
+                return results
+            else:
+                print(f"Inga hållplatser hittades för '{stop_name}'.")
+                return []
+        except requests.exceptions.RequestException as e:
+            print(f"API-fel: {e}")
+            return []
 
 
 # resrobot = ResRobot()
