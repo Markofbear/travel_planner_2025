@@ -1,17 +1,17 @@
-from dotenv import load_dotenv
 import os
+
 import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 
 
 class ResRobot:
-
     API_KEY = os.getenv("API_KEY")
 
     def trips(self, origin_id=740000001, destination_id=740098001):
         """origing_id and destination_id can be found from Stop lookup API"""
-        url = f"https://api.resrobot.se/v2.1/trip?format=json&originId={origin_id}&destId={destination_id}&passlist=true&showPassingPoints=true&accessId={self.API_KEY}"
+        url = f"https://api.resrobot.se/v2.1/trip?format=json&originId={origin_id}&destId={destination_id}&passlist=true&showPassingPoints=true&accessId={self.API_KEY}"  # noqa: E501
 
         try:
             response = requests.get(url)
@@ -46,13 +46,13 @@ class ResRobot:
         response = requests.get(url)
         result = response.json()
         return result
-    
+
     def lookup_stop(self, stop_name: str) -> list:
         """Search for stops based on the stop name using fuzzy matching."""
-        url = f"https://api.resrobot.se/v2.1/location.name"
+        url = "https://api.resrobot.se/v2.1/location.name"
         params = {
             "input": f"{stop_name}?",  # Frågetecknet läggs här för fuzzy matching
-            "format": "json",          # Tvinga API:et att returnera JSON
+            "format": "json",  # Tvinga API:et att returnera JSON
             "accessId": self.API_KEY,
         }
         try:
@@ -67,20 +67,24 @@ class ResRobot:
                     # Iterera över både StopLocation och CoordLocation
                     if "StopLocation" in location:
                         stop = location["StopLocation"]
-                        results.append({
-                            "name": stop["name"],
-                            "id": stop["extId"],
-                            "lon": stop["lon"],
-                            "lat": stop["lat"]
-                        })
+                        results.append(
+                            {
+                                "name": stop["name"],
+                                "id": stop["extId"],
+                                "lon": stop["lon"],
+                                "lat": stop["lat"],
+                            }
+                        )
                     elif "CoordLocation" in location:
                         coord = location["CoordLocation"]
-                        results.append({
-                            "name": coord["name"],
-                            "id": coord["id"],
-                            "lon": coord["lon"],
-                            "lat": coord["lat"]
-                        })
+                        results.append(
+                            {
+                                "name": coord["name"],
+                                "id": coord["id"],
+                                "lon": coord["lon"],
+                                "lat": coord["lat"],
+                            }
+                        )
                 return results
             else:
                 print(f"Inga hållplatser hittades för '{stop_name}'.")
