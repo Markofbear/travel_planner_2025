@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import folium
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 
 from backend.trips import TripPlanner
 
@@ -91,6 +91,6 @@ class TripMap:
 
         if folium_map is not None:
             # Use streamlit-folium to display the map
-            folium_static(folium_map)
+            st_folium(folium_map)
         else:
             st.error("Failed to create the map. Please check the trip data.")
