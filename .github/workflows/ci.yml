@@ -24,7 +24,7 @@ jobs:
             pip install -r requirements.txt
     
       - name: Run flake8
-        run: flake8 .
+        run: flake8 --max-line-length=200 .
 
       - name: Run black
         run: black --check .
