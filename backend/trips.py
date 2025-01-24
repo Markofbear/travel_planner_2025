@@ -1,7 +1,8 @@
-from backend.connect_to_api import ResRobot
-import pandas as pd
 from datetime import datetime, timedelta
 
+import pandas as pd
+
+from backend.connect_to_api import ResRobot
 
 resrobot = ResRobot()
 
@@ -29,7 +30,6 @@ class TripPlanner:
     """
 
     def __init__(self, origin_id, destination_id) -> None:
-
         self.trips = resrobot.trips(origin_id, destination_id).get("Trip")
         self.number_trips = len(self.trips)
 
@@ -66,10 +66,6 @@ class TripPlanner:
         """
         # TODO: implement this method
 
-
-
-        
-
     def trips_for_next_hour(self) -> pd.DataFrame:
         """Filters trips to include only those departing within the next hour."""
         now = datetime.now()
@@ -79,8 +75,12 @@ class TripPlanner:
         for trip in self.trips:
             leglist = trip.get("LegList").get("Leg")
             df_legs = pd.DataFrame(leglist)
-            df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
-            df_stops["depTime"] = pd.to_datetime(df_stops["depDate"] + " " + df_stops["depTime"])
+            df_stops = pd.json_normalize(
+                df_legs["Stops"].dropna(), "Stop", errors="ignore"
+            )
+            df_stops["depTime"] = pd.to_datetime(
+                df_stops["depDate"] + " " + df_stops["depTime"]
+            )
             # Filter trips within the next hour
             df_filtered = df_stops[
                 (df_stops["depTime"] >= now) & (df_stops["depTime"] <= one_hour_later)
@@ -96,17 +96,22 @@ class TripPlanner:
         for trip in self.trips:
             leglist = trip.get("LegList").get("Leg")
             df_legs = pd.DataFrame(leglist)
-            df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
+            df_stops = pd.json_normalize(
+                df_legs["Stops"].dropna(), "Stop", errors="ignore"
+            )
             df_stops["time"] = df_stops["arrTime"].fillna(df_stops["depTime"])
             df_stops["date"] = df_stops["arrDate"].fillna(df_stops["depDate"])
             # Filter trips that stop at the specified stop
-            df_filtered = df_stops[df_stops["name"].str.contains(stop_name, case=False, na=False)]
+            df_filtered = df_stops[
+                df_stops["name"].str.contains(stop_name, case=False, na=False)
+            ]
             if not df_filtered.empty:
                 trips.append(df_filtered)
         return trips
 
+
 if __name__ == "__main__":
-    data = TripData(
+    data = TripPlanner(
         740000190,
     )
     print(data.next_available_trip()[["arrTime", "depTime", "time", "date"]])
