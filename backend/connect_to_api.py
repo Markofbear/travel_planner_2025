@@ -94,6 +94,27 @@ class ResRobot:
             return []
 
 
+def get_weather(city_name, OPEN_WEATHER_API_KEY):
+    """
+    Fetches the current weather data for a given city using the OpenWeatherMap API.
+
+    Parameters:
+        city_name (str): The name of the city.
+        api_key (str): OpenWeatherMap API key.
+
+    Returns:
+        dict: A dictionary containing weather data if successful, otherwise None.
+    """
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city_name}&units=metric&appid={OPEN_WEATHER_API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching weather data: {e}")
+        return None
+
+
 # resrobot = ResRobot()
 
 # pprint(resrobot.timetable_arrival()["Arrival"][0])
