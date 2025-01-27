@@ -32,6 +32,7 @@ fastjsonschema==2.19.1
 filelock==3.16.0
 flake8==7.1.1
 flatbuffers==24.3.25
+folium==0.19.4
 fonttools==4.48.1
 fqdn==1.5.1
 fsspec==2024.9.0
