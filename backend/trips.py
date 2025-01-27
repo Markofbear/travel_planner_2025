@@ -66,28 +66,39 @@ class TripPlanner:
         """
         # TODO: implement this method
 
-    def trips_for_next_hour(self) -> pd.DataFrame:
-        """Filters trips to include only those departing within the next hour."""
+    def trips_for_next_hour(self) -> list[pd.DataFrame]:
+        """Return a list of DataFrames, one for each trip that starts in the next hour."""
         now = datetime.now()
         one_hour_later = now + timedelta(hours=1)
-        trips = []
+
+        qualified_trips = []
 
         for trip in self.trips:
-            leglist = trip.get("LegList").get("Leg")
+            # Each "trip" can have multiple legs
+            leglist = trip.get("LegList", {}).get("Leg", [])
+            if not leglist:
+                continue  # skip if malformed
+
+            # Flatten all stops from all legs into a single DataFrame
             df_legs = pd.DataFrame(leglist)
             df_stops = pd.json_normalize(
                 df_legs["Stops"].dropna(), "Stop", errors="ignore"
             )
+
+            # Convert 'depTime' string columns into actual timestamps
+            # (depDate + depTime) => e.g. '2025-01-27' + '13:05' = '2025-01-27 13:05'
             df_stops["depTime"] = pd.to_datetime(
-                df_stops["depDate"] + " " + df_stops["depTime"]
+                df_stops["depDate"] + " " + df_stops["depTime"], errors="coerce"
             )
-            # Filter trips within the next hour
-            df_filtered = df_stops[
-                (df_stops["depTime"] >= now) & (df_stops["depTime"] <= one_hour_later)
-            ]
-            if not df_filtered.empty:
-                trips.append(df_filtered)
-        return trips
+
+            # The earliest departure for the whole trip
+            earliest_departure = df_stops["depTime"].min()
+
+            # Keep the entire trip if it starts within the next hour
+            if now <= earliest_departure <= one_hour_later:
+                qualified_trips.append(df_stops)
+
+        return qualified_trips
 
     def trips_for_specific_stop(self, stop_name: str) -> pd.DataFrame:
         """Filters trips to include only those that stop at the specified stop name."""
