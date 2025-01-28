@@ -9,6 +9,7 @@ from plot_maps import TripMap
 from streamlit_folium import st_folium
 
 from backend.connect_to_api import ResRobot, get_weather
+from backend.departure_board import DepartureBoard
 from backend.trips import TripPlanner
 
 DEFAULT_COORDS = {"lat": 57.7089, "lon": 11.9746}
@@ -142,6 +143,32 @@ def main():
                     )
             else:
                 st.write("Inga resor hittades inom den närmsta timmen.")
+
+    st.header("Avgångstavla")
+
+    resrobot = ResRobot()
+    departure_board = DepartureBoard(resrobot)
+
+    # Input field for stop ID
+    stop_id = st.text_input(
+        "Ange hållplats-ID:", value="740025608", key="stop_id"
+    )  # Exempel: Axel Dahlströms torg
+
+    if st.button("Visa avgångar", key="show_departures"):
+        # Fetch departures for the specified stop
+        departures = departure_board.get_departures(stop_id)
+        if departures:
+            # Filter departures within 60 minutes
+            filtered_departures = departure_board.filter_departures(departures)
+
+            if filtered_departures:
+                st.write("### Avgångar:")
+                for dep in filtered_departures:
+                    st.write(dep)
+            else:
+                st.error("Inga avgångar inom den närmsta timmen hittades.")
+        else:
+            st.error("Inga avgångar hittades för denna hållplats.")
 
 
 if __name__ == "__main__":

@@ -15,8 +15,8 @@ class TripPlanner:
 
     def next_available_trip(self):
         t = self.trips[0]
-        l = t["LegList"]["Leg"]
-        df_legs = pd.DataFrame(l)
+        leglist = t["LegList"]["Leg"]
+        df_legs = pd.DataFrame(leglist)
         df_stops = pd.json_normalize(df_legs["Stops"].dropna(), "Stop", errors="ignore")
         df_stops["time"] = df_stops["arrTime"].fillna(df_stops["depTime"])
         df_stops["date"] = df_stops["arrDate"].fillna(df_stops["depDate"])
@@ -43,10 +43,10 @@ class TripPlanner:
         later = now + timedelta(hours=1)
         out = []
         for trip in self.trips:
-            l = trip.get("LegList", {}).get("Leg", [])
-            if not l:
+            leglist = trip.get("LegList", {}).get("Leg", [])
+            if not leglist:
                 continue
-            df_legs = pd.DataFrame(l)
+            df_legs = pd.DataFrame(leglist)
             df_stops = pd.json_normalize(
                 df_legs["Stops"].dropna(), "Stop", errors="ignore"
             )
@@ -56,7 +56,7 @@ class TripPlanner:
             earliest = df_stops["depTime"].min()
             if earliest and now <= earliest <= later:
                 names = []
-                for leg in l:
+                for leg in leglist:
                     names.append(leg.get("name", ""))
                 out.append({"label": " -> ".join(names), "df_stops": df_stops})
         return out
@@ -64,8 +64,8 @@ class TripPlanner:
     def trips_for_specific_stop(self, stop_name):
         out = []
         for trip in self.trips:
-            l = trip["LegList"]["Leg"]
-            df_legs = pd.DataFrame(l)
+            leglist = trip["LegList"]["Leg"]
+            df_legs = pd.DataFrame(leglist)
             df_stops = pd.json_normalize(
                 df_legs["Stops"].dropna(), "Stop", errors="ignore"
             )
