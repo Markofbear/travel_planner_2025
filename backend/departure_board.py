@@ -50,3 +50,24 @@ class DepartureBoard:
             for departure in departures
             if 0 <= departure["minutes_to_departure"] <= max_minutes
         ]
+
+    def get_departures_dataframe(self, stop_id):
+        """Fetch and process departures as a DataFrame."""
+        departures = self.get_departures(stop_id)
+        filtered_departures = self.filter_departures(departures)
+
+        if not filtered_departures:
+            return None
+
+        # Convert to DataFrame
+        df = pd.DataFrame(filtered_departures)
+        df = df.rename(
+            columns={
+                "line_number": "Linje",
+                "direction": "Destination",
+                "minutes_to_departure": "Nästa (min)",
+                "transport_type": "Typ",
+            }
+        )
+
+        return df[["Typ", "Linje", "Destination", "Nästa (min)"]]
