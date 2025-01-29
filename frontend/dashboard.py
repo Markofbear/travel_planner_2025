@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 
 import folium
@@ -177,13 +178,16 @@ def main():
         if possible_stops:
             selected_stop = st.selectbox(
                 "Välj hållplats:",
-                [f"{stop['name']} (ID: {stop['id']})" for stop in possible_stops],
+                [
+                    re.sub(r"\(.*\)", "", stop["name"]).strip()
+                    for stop in possible_stops
+                ],
             )
 
             stop_id = next(
                 stop["id"]
                 for stop in possible_stops
-                if f"{stop['name']} (ID: {stop['id']})" == selected_stop
+                if re.sub(r"\(.*\)", "", stop["name"]).strip() == selected_stop
             )
 
             if st.button("Visa avgångar"):
