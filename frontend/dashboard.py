@@ -29,20 +29,28 @@ def display_default_map():
 
 
 def weather_section(city_name):
-    if not OPEN_WEATHER_API_KEY:
-        st.error("Ingen API-nyckel hittades.")
-        return
     w = get_weather(city_name, OPEN_WEATHER_API_KEY)
     if w:
+        weather_icon_code = w["weather"][0]["icon"]
+        weather_icon_url = (
+            f"http://openweathermap.org/img/wn/{weather_icon_code}@2x.png"
+        )
+
         st.subheader(f"Vädret i {w['name']}, {w['sys']['country']}")
-        st.write(f"Temperatur: {w['main']['temp']}°C")
-        st.write(f"Känns som: {w['main']['feels_like']}°C")
-        st.write(f"Väder: {w['weather'][0]['description'].capitalize()}")
-        st.write(f"Luftfuktighet: {w['main']['humidity']}%")
-        st.write(f"Vindhastighet: {w['wind']['speed']} m/s")
-        st.write(f"Tidpunkt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            st.image(weather_icon_url, width=100)
+        with col2:
+            st.write(f"🌡️ {w['main']['temp']}°C")
+            st.write(f"💨 {w['wind']['speed']} m/s")
+            st.write(f"☁  {w['weather'][0]['description'].capitalize()}")
+
+        st.write(f"💧 {w['main']['humidity']}%")
+        st.write(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
     else:
-        st.error(f"Kunde inte hämta väderdata för {city_name}.")
+        st.error(f"Kunde inte hämta vädret för {city_name}.")
 
 
 def main():
@@ -101,7 +109,6 @@ def main():
             for s in st.session_state.destination_stops
             if f"{s['name']} (ID: {s['id']})" == dc
         )
-    st.header("Väder för standardplats")
     weather_section(DEFAULT_CITY)
     if not st.session_state.origin_id or not st.session_state.destination_id:
         st.header("Karta över din resa")
