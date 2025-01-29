@@ -144,31 +144,57 @@ def main():
             else:
                 st.write("Inga resor hittades inom den närmsta timmen.")
 
+    # Departure board
     st.header("Avgångstavla")
-
     resrobot = ResRobot()
     departure_board = DepartureBoard(resrobot)
 
-    # Input field for stop ID
-    stop_id = st.text_input(
-        "Ange hållplats-ID:", value="740025608", key="stop_id"
-    )  # Exempel: Axel Dahlströms torg
+    # Search for departure stop
+    stop_name = st.text_input("Sök hållplats:", placeholder="Skriv för att söka...")
+    if stop_name:
+        possible_stops = resrobot.lookup_stop(stop_name)
+        if possible_stops:
+            selected_stop = st.selectbox(
+                "Välj hållplats:",
+                [f"{stop['name']} (ID: {stop['id']})" for stop in possible_stops],
+            )
 
-    if st.button("Visa avgångar", key="show_departures"):
-        # Fetch departures for the specified stop
-        departures = departure_board.get_departures(stop_id)
-        if departures:
-            # Filter departures within 60 minutes
-            filtered_departures = departure_board.filter_departures(departures)
+            stop_id = next(
+                stop["id"]
+                for stop in possible_stops
+                if f"{stop['name']} (ID: {stop['id']})" == selected_stop
+            )
 
-            if filtered_departures:
-                st.write("### Avgångar:")
-                for dep in filtered_departures:
-                    st.write(dep)
-            else:
-                st.error("Inga avgångar inom den närmsta timmen hittades.")
+            if st.button("Visa avgångar"):
+                departures = departure_board.get_departures(stop_id)
+
+                if departures:
+                    filtered_departures = departure_board.filter_departures(departures)
+
+                    if filtered_departures:
+                        st.write("### Avgångar:")
+
+                        # Convert to dataframe
+                        df = pd.DataFrame(filtered_departures)
+                        df = df.rename(
+                            columns={
+                                "line_number": "Linje",
+                                "direction": "Destination",
+                                "minutes_to_departure": "Nästa (min)",
+                                "transport_type": "Typ",
+                            }
+                        )
+                        # Show departures
+                        st.dataframe(
+                            df[["Typ", "Linje", "Destination", "Nästa (min)"]],
+                            hide_index=True,
+                        )
+                    else:
+                        st.error("Inga avgångar inom den närmsta timmen hittades.")
+                else:
+                    st.error("Inga avgångar hittades för denna hållplats.")
         else:
-            st.error("Inga avgångar hittades för denna hållplats.")
+            st.error(f"Inga matchande hållplatser hittades för '{stop_name}'.")
 
 
 if __name__ == "__main__":
