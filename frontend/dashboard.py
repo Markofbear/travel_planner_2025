@@ -158,8 +158,10 @@ def main():
 
     # Search for departure stop
     stop_name = st.text_input("Sök hållplats:", placeholder="Skriv för att söka...")
+
     if stop_name:
         possible_stops = resrobot.lookup_stop(stop_name)
+
         if possible_stops:
             selected_stop = st.selectbox(
                 "Välj hållplats:",
@@ -173,33 +175,13 @@ def main():
             )
 
             if st.button("Visa avgångar"):
-                departures = departure_board.get_departures(stop_id)
+                df = departure_board.get_departures_dataframe(stop_id)
 
-                if departures:
-                    filtered_departures = departure_board.filter_departures(departures)
-
-                    if filtered_departures:
-                        st.write("### Avgångar:")
-
-                        # Convert to dataframe
-                        df = pd.DataFrame(filtered_departures)
-                        df = df.rename(
-                            columns={
-                                "line_number": "Linje",
-                                "direction": "Destination",
-                                "minutes_to_departure": "Nästa (min)",
-                                "transport_type": "Typ",
-                            }
-                        )
-                        # Show departures
-                        st.dataframe(
-                            df[["Typ", "Linje", "Destination", "Nästa (min)"]],
-                            hide_index=True,
-                        )
-                    else:
-                        st.error("Inga avgångar inom den närmsta timmen hittades.")
+                if df is not None:
+                    st.write("### Avgångar:")
+                    st.dataframe(df, hide_index=True)
                 else:
-                    st.error("Inga avgångar hittades för denna hållplats.")
+                    st.error("Inga avgångar inom den närmsta timmen hittades.")
         else:
             st.error(f"Inga matchande hållplatser hittades för '{stop_name}'.")
 
