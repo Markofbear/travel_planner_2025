@@ -1,13 +1,9 @@
-import os
-
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
+import streamlit as st
 
 
 class ResRobot:
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = st.secrets["api"]["API_KEY"]
 
     def trips(self, origin_id=740000001, destination_id=740098001):
         """origing_id and destination_id can be found from Stop lookup API"""

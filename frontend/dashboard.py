@@ -1,11 +1,11 @@
-import os
 import re
 from datetime import datetime
 
 import folium
 import pandas as pd
 import streamlit as st
-from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 from plot_maps import TripMap
 from streamlit_folium import st_folium
 
@@ -15,8 +15,8 @@ from backend.trips import TripPlanner
 
 DEFAULT_COORDS = {"lat": 57.7089, "lon": 11.9746}
 DEFAULT_CITY = "Göteborg"
-load_dotenv()
-OPEN_WEATHER_API_KEY = os.getenv("OPEN_WEATHER_API_KEY")
+# load_dotenv()
+OPEN_WEATHER_API_KEY = st.secrets["api"]["OPEN_WEATHER_API_KEY"]
 
 
 # 🔹 UPDATED: Cache the timetable to prevent refetching when moving the map
