@@ -11,6 +11,20 @@ from backend.trips import TripPlanner
 DEFAULT_COORDS = {"lat": 57.7089, "lon": 11.9746}
 OPEN_WEATHER_API_KEY = st.secrets["api"]["OPEN_WEATHER_API_KEY"]
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-image: url("https://images.pexels.com/photos/2203416/pexels-photo-2203416.jpeg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 @st.cache_data
 def fetch_timetable(origin_id, destination_id):
