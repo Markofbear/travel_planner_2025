@@ -3,7 +3,6 @@ from datetime import datetime
 import folium
 import pandas as pd
 import streamlit as st
-from streamlit_folium import st_folium
 
 from backend.connect_to_api import ResRobot, get_weather
 from backend.departure_board import DepartureBoard
@@ -20,16 +19,19 @@ def fetch_timetable(origin_id, destination_id):
 
 
 def display_default_map():
+    """Creates a default map centered on Gothenburg and stores its HTML in session state."""
     folium_map = folium.Map(
         location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], zoom_start=12
     )
     folium.Marker(
-        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], popup="Gothenburg"
+        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]],
+        popup="Gothenburg",
     ).add_to(folium_map)
-    st_folium(folium_map, width=700, height=500)
+    st.session_state.map_html = folium_map._repr_html_()
 
 
 def display_map_with_trip(trip):
+    """Creates a map based on the selected trip's stops and stores its HTML in session state."""
     if trip:
         stops = trip["df_stops"]
         first_stop = stops.iloc[0]
@@ -54,8 +56,8 @@ def display_map_with_trip(trip):
 
 
 def render_map():
-    if "map_html" in st.session_state and st.session_state.map_html:
-        st.components.v1.html(st.session_state.map_html, height=500)
+    """Renders the map stored in session state."""
+    st.components.v1.html(st.session_state.map_html, height=500)
 
 
 def weather_section(city_name):
@@ -92,14 +94,21 @@ def main():
         "destination_stops",
         "selected_trip",
         "map_html",
+        "timetable",
     ]:
         if key not in st.session_state:
-            st.session_state[key] = None if "id" in key else []
+            st.session_state[key] = (
+                None
+                if key in ["origin_id", "destination_id", "timetable", "selected_trip"]
+                else []
+            )
+
+    if not st.session_state.map_html:
+        display_default_map()
 
     origin_name = st.text_input("Från:", key="origin_name")
     destination_name = st.text_input("Till:", key="destination_name")
 
-    # Show weather for the selected origin and destination above the map
     if origin_name:
         weather_section(origin_name)
     if destination_name:
@@ -113,31 +122,22 @@ def main():
             st.session_state.destination_stops = r.lookup_stop(destination_name) or []
 
     if st.session_state.origin_stops:
-        oc = st.selectbox(
+        selected_origin = st.selectbox(
             "Välj ursprungshållplats:",
-            [f"{s['name']} (ID: {s['id']})" for s in st.session_state.origin_stops],
+            st.session_state.origin_stops,
+            format_func=lambda s: s["name"],
             key="origin_choice",
         )
-        st.session_state.origin_id = next(
-            s["id"]
-            for s in st.session_state.origin_stops
-            if f"{s['name']} (ID: {s['id']})" == oc
-        )
+        st.session_state.origin_id = selected_origin["id"]
 
     if st.session_state.destination_stops:
-        dc = st.selectbox(
+        selected_destination = st.selectbox(
             "Välj destinationshållplats:",
-            [
-                f"{s['name']} (ID: {s['id']})"
-                for s in st.session_state.destination_stops
-            ],
+            st.session_state.destination_stops,
+            format_func=lambda s: s["name"],
             key="destination_choice",
         )
-        st.session_state.destination_id = next(
-            s["id"]
-            for s in st.session_state.destination_stops
-            if f"{s['name']} (ID: {s['id']})" == dc
-        )
+        st.session_state.destination_id = selected_destination["id"]
 
     if st.session_state.origin_id and st.session_state.destination_id:
         if st.button("📅 Hämta tidtabell", key="fetch_schedule"):
@@ -146,7 +146,7 @@ def main():
             )
             st.session_state.selected_trip = None
 
-        if "timetable" in st.session_state and st.session_state.timetable:
+        if st.session_state.timetable:
             st.write("### 📅 Välj en resa:")
             for index, t in enumerate(st.session_state.timetable):
                 label = t["label"]
@@ -154,47 +154,42 @@ def main():
                     st.session_state.selected_trip = t
                     display_map_with_trip(t)
 
-        render_map()
+    render_map()
 
-        if st.session_state.selected_trip:
-            df = st.session_state.selected_trip["df_stops"]
-            df["time_remaining"] = (
-                df["depTime"] - pd.Timestamp.now()
-            ).dt.total_seconds() // 60
-            df_renamed = df.rename(
-                columns={
-                    "name": "Namn",
-                    "depTime": "Avgångstid",
-                    "arrTime": "Ankomsttid",
-                    "time_remaining": "Tid kvar (min)",
-                }
-            )
-            st.write("### Resptabell:")
-            st.dataframe(
-                df_renamed[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]]
-            )
+    if st.session_state.selected_trip:
+        df = st.session_state.selected_trip["df_stops"]
+        df["time_remaining"] = (
+            df["depTime"] - pd.Timestamp.now()
+        ).dt.total_seconds() // 60
+        df_renamed = df.rename(
+            columns={
+                "name": "Namn",
+                "depTime": "Avgångstid",
+                "arrTime": "Ankomsttid",
+                "time_remaining": "Tid kvar (min)",
+            }
+        )
+        st.write("### Restabell:")
+        st.dataframe(df_renamed[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]])
 
-    if not st.session_state.origin_id or not st.session_state.destination_id:
-        display_default_map()
+    st.header("Avgångstavla")
 
-        st.header("Avgångstavla")
     resrobot = ResRobot()
     departure_board = DepartureBoard(resrobot)
-    stop_name = st.text_input("Sök hållplats:", placeholder="Skriv för att söka...")
+    stop_name = st.text_input(
+        "Sök hållplats:", placeholder="Skriv för att söka...", key="dep_stop_name"
+    )
     if stop_name:
         possible_stops = resrobot.lookup_stop(stop_name)
         if possible_stops:
             selected_stop = st.selectbox(
                 "Välj hållplats:",
-                [f"{stop['name']} (ID: {stop['id']})" for stop in possible_stops],
-                key="selected_stop",
+                possible_stops,
+                format_func=lambda stop: stop["name"],
+                key="selected_stop_departure",
             )
-            stop_id = next(
-                stop["id"]
-                for stop in possible_stops
-                if f"{stop['name']} (ID: {stop['id']})" == selected_stop
-            )
-            if st.button("Visa avgångar"):
+            stop_id = selected_stop["id"]
+            if st.button("Visa avgångar", key="show_departures"):
                 df = departure_board.get_departures_dataframe(stop_id)
                 if df is not None:
                     st.write("### Avgångar:")
