@@ -20,6 +20,17 @@ st.markdown(
         background-position: center;
         background-repeat: no-repeat;
     }
+    [data-testid="stAppViewContainer"] {
+        background-color: rgba(0, 0, 0, 0.8) !important;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin: 2rem auto;
+        border: 2px solid #fff;
+        max-width: 900px;
+    }
+    [data-testid="stMarkdownContainer"] {
+        color: #fff;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -33,27 +44,22 @@ def fetch_timetable(origin_id, destination_id):
 
 
 def display_default_map():
-    """Creates a default map centered on Gothenburg and stores its HTML in session state."""
     folium_map = folium.Map(
         location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], zoom_start=12
     )
     folium.Marker(
-        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]],
-        popup="Gothenburg",
+        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], popup="Gothenburg"
     ).add_to(folium_map)
     st.session_state.map_html = folium_map._repr_html_()
 
 
 def display_map_with_trip(trip):
-    """Creates a map based on the selected trip's stops and stores its HTML in session state."""
     if trip:
         stops = trip["df_stops"]
         first_stop = stops.iloc[0]
-
         folium_map = folium.Map(
             location=[first_stop["lat"], first_stop["lon"]], zoom_start=12
         )
-
         coordinates = []
         for _, stop in stops.iterrows():
             folium.Marker(
@@ -61,16 +67,13 @@ def display_map_with_trip(trip):
                 popup=f"{stop['name']} - Avgång: {stop['depTime']}",
             ).add_to(folium_map)
             coordinates.append([stop["lat"], stop["lon"]])
-
         folium.PolyLine(
             locations=coordinates, color="blue", weight=5, opacity=0.7
         ).add_to(folium_map)
-
         st.session_state.map_html = folium_map._repr_html_()
 
 
 def render_map():
-    """Renders the map stored in session state."""
     st.components.v1.html(st.session_state.map_html, height=500)
 
 
@@ -81,9 +84,7 @@ def weather_section(city_name):
         weather_icon_url = (
             f"http://openweathermap.org/img/wn/{weather_icon_code}@2x.png"
         )
-
         st.subheader(f"Vädret i {w['name']}, {w['sys']['country']}")
-
         col1, col2 = st.columns([1, 2])
         with col1:
             st.image(weather_icon_url, width=100)
@@ -97,10 +98,14 @@ def weather_section(city_name):
         st.error(f"Kunde inte hämta vädret för {city_name}.")
 
 
-def main():
-    st.title("Tidtabell för kollektivtrafik")
-    st.write("Visa avgående tåg, bussar eller spårvagnar för en specifik hållplats")
+def home_tab():
+    st.title("Trafikapp")
+    st.write(
+        "Välkommen till vårt grupparbete för en väl fungerande trafikapp! Vi som har jobbat på den är Anna, Björn och Brian"
+    )
 
+
+def tidtabell_tab():
     for key in [
         "origin_id",
         "destination_id",
@@ -116,25 +121,20 @@ def main():
                 if key in ["origin_id", "destination_id", "timetable", "selected_trip"]
                 else []
             )
-
     if not st.session_state.map_html:
         display_default_map()
-
     origin_name = st.text_input("Från:", key="origin_name")
     destination_name = st.text_input("Till:", key="destination_name")
-
     if origin_name:
         weather_section(origin_name)
     if destination_name:
         weather_section(destination_name)
-
     if st.button("🔍 Sök hållplatser", key="search_stops"):
         r = ResRobot()
         if origin_name:
             st.session_state.origin_stops = r.lookup_stop(origin_name) or []
         if destination_name:
             st.session_state.destination_stops = r.lookup_stop(destination_name) or []
-
     if st.session_state.origin_stops:
         selected_origin = st.selectbox(
             "Välj ursprungshållplats:",
@@ -143,7 +143,6 @@ def main():
             key="origin_choice",
         )
         st.session_state.origin_id = selected_origin["id"]
-
     if st.session_state.destination_stops:
         selected_destination = st.selectbox(
             "Välj destinationshållplats:",
@@ -152,14 +151,12 @@ def main():
             key="destination_choice",
         )
         st.session_state.destination_id = selected_destination["id"]
-
     if st.session_state.origin_id and st.session_state.destination_id:
         if st.button("📅 Hämta tidtabell", key="fetch_schedule"):
             st.session_state.timetable = fetch_timetable(
                 st.session_state.origin_id, st.session_state.destination_id
             )
             st.session_state.selected_trip = None
-
         if st.session_state.timetable:
             st.write("### 📅 Välj en resa:")
             for index, t in enumerate(st.session_state.timetable):
@@ -167,9 +164,7 @@ def main():
                 if st.button(label, key=f"trip_{index}"):
                     st.session_state.selected_trip = t
                     display_map_with_trip(t)
-
     render_map()
-
     if st.session_state.selected_trip:
         df = st.session_state.selected_trip["df_stops"]
         df["time_remaining"] = (
@@ -186,8 +181,8 @@ def main():
         st.write("### Restabell:")
         st.dataframe(df_renamed[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]])
 
-    st.header("Avgångstavla")
 
+def avgangstavla_tab():
     resrobot = ResRobot()
     departure_board = DepartureBoard(resrobot)
     stop_name = st.text_input(
@@ -210,6 +205,25 @@ def main():
                     st.dataframe(df, hide_index=True)
                 else:
                     st.error("Inga avgångar inom den närmsta timmen hittades.")
+
+
+def weather_tab():
+    st.title("Väder")
+    city = st.text_input("Ange stad:")
+    if city:
+        weather_section(city)
+
+
+def main():
+    tabs = st.tabs(["Hem", "Tidtabell", "Avgångstavla", "Väder"])
+    with tabs[0]:
+        home_tab()
+    with tabs[1]:
+        tidtabell_tab()
+    with tabs[2]:
+        avgangstavla_tab()
+    with tabs[3]:
+        weather_tab()
 
 
 if __name__ == "__main__":
