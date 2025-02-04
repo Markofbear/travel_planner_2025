@@ -190,9 +190,9 @@ def tidtabell_tab():
         df["time_remaining"] = (
             df["depTime"] - pd.Timestamp.now()
         ).dt.total_seconds() // 60
-        df.loc[df["time_remaining"] < 0, "time_remaining"] = (
-            0  # Ensure no negative times
-        )
+        df.loc[
+            df["time_remaining"] < 0, "time_remaining"
+        ] = 0  # Ensure no negative times
         df["depTime"] = df["depTime"].dt.strftime("%H:%M")
         df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
 
@@ -224,6 +224,7 @@ def avgangstavla_tab():
     )
     if stop_name:
         possible_stops = resrobot.lookup_stop(stop_name)
+
         if possible_stops:
             selected_stop = st.selectbox(
                 "Välj hållplats:",
@@ -231,14 +232,46 @@ def avgangstavla_tab():
                 format_func=lambda stop: stop["name"],
                 key="selected_stop_departure",
             )
-            stop_id = selected_stop["id"]
-            if st.button("Visa avgångar", key="show_departures"):
-                df = departure_board.get_departures_dataframe(stop_id)
-                if df is not None:
-                    st.write("### Avgångar:")
-                    st.dataframe(df, hide_index=True)
-                else:
-                    st.error("Inga avgångar inom den närmsta timmen hittades.")
+
+            if selected_stop:
+                stop_id = selected_stop["id"]
+
+                if st.button("Visa avgångar", key="show_departures"):
+                    df = departure_board.get_departures_dataframe(stop_id)
+
+                    if df is not None:
+                        st.write("### Avgångar:")
+                        # CSS to left-align column names
+                        st.markdown(
+                            """
+                            <style>
+                                th {
+                                    text-align: left !important;
+                                }
+                                td {
+                                    text-align: left !important;
+                                }
+                            </style>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Add icons
+                        df["Typ"] = df["Typ"].apply(
+                            lambda x: departure_board.map_transport_icon(x) + " " + x
+                        )
+
+                        # Show table with HTML
+                        st.markdown(
+                            df.to_html(escape=False, index=False),
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.error("Inga avgångar inom den närmsta timmen hittades.")
+            else:
+                st.error("Ingen hållplats valdes. Välj en från listan.")
+        else:
+            st.error(f"Inga matchande hållplatser hittades för '{stop_name}'.")
 
 
 def weather_tab():
