@@ -191,6 +191,7 @@ def tidtabell_tab():
         df.loc[df["time_remaining"] < 0, "time_remaining"] = (
             0  # Ensure no negative times
         )
+
         df["depTime"] = df["depTime"].dt.strftime("%H:%M")
         df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
 
