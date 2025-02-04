@@ -185,14 +185,12 @@ def tidtabell_tab():
         # ✅ Define df before using it!
         df = st.session_state.selected_trip["df_stops"].copy()
 
-        df["depTime"] = pd.to_datetime(df["depTime"], errors="coerce")
-        df["arrTime"] = pd.to_datetime(df["arrTime"], errors="coerce")
         df["time_remaining"] = (
             df["depTime"] - pd.Timestamp.now()
         ).dt.total_seconds() // 60
-        df.loc[
-            df["time_remaining"] < 0, "time_remaining"
-        ] = 0  # Ensure no negative times
+        df.loc[df["time_remaining"] < 0, "time_remaining"] = (
+            0  # Ensure no negative times
+        )
         df["depTime"] = df["depTime"].dt.strftime("%H:%M")
         df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
 
