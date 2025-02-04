@@ -31,6 +31,10 @@ st.markdown(
     [data-testid="stMarkdownContainer"] {
         color: #fff;
     }
+    div.stButton > button {
+        background-color: black !important;
+        color: white !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -102,6 +106,10 @@ def home_tab():
     st.title("Trafikapp")
     st.write(
         "Välkommen till vårt grupparbete för en väl fungerande trafikapp! Vi som har jobbat på den är Anna, Björn och Brian"
+    )
+    st.image(
+        "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcTdlZDVmeG1ueDZyb2k5eGNwYXNnaWp3dnY3OHJ2ajlkYzY3M3FzMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13HgwGsXF0aiGY/giphy.gif",
+        width=800,
     )
 
 
