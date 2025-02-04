@@ -173,11 +173,29 @@ def tidtabell_tab():
                     st.session_state.selected_trip = t
                     display_map_with_trip(t)
     render_map()
+
     if st.session_state.selected_trip:
-        df = st.session_state.selected_trip["df_stops"]
+        trip_label = st.session_state.selected_trip.get("label", "")
+        transport_list = [segment.strip() for segment in trip_label.split("->")]
+
+        # Count unique transport changes
+        num_transfers = max(len(set(transport_list)) - 1, 0)
+        st.write(f"🚏 **Antal byten:** {num_transfers}")
+
+        # ✅ Define df before using it!
+        df = st.session_state.selected_trip["df_stops"].copy()
+
+        df["depTime"] = pd.to_datetime(df["depTime"], errors="coerce")
+        df["arrTime"] = pd.to_datetime(df["arrTime"], errors="coerce")
         df["time_remaining"] = (
             df["depTime"] - pd.Timestamp.now()
         ).dt.total_seconds() // 60
+        df.loc[
+            df["time_remaining"] < 0, "time_remaining"
+        ] = 0  # Ensure no negative times
+        df["depTime"] = df["depTime"].dt.strftime("%H:%M")
+        df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
+
         df_renamed = df.rename(
             columns={
                 "name": "Namn",
@@ -186,6 +204,14 @@ def tidtabell_tab():
                 "time_remaining": "Tid kvar (min)",
             }
         )
+
+        # ✅ Count the number of stops
+        num_stops = max(len(df_renamed) - 1, 0)
+
+        st.write(
+            f"🛑 **Antal stopp på vägen:** {num_stops}"
+        )  # ✅ New line to display the stop count
+
         st.write("### Restabell:")
         st.dataframe(df_renamed[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]])
 
