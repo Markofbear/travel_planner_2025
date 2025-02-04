@@ -29,7 +29,7 @@ st.markdown(
         max-width: 900px;
     }
     [data-testid="stMarkdownContainer"] {
-        color: #fff;
+        color: #ffff;
     }
     div.stButton > button {
         background-color: black !important;
@@ -190,9 +190,9 @@ def tidtabell_tab():
         df["time_remaining"] = (
             df["depTime"] - pd.Timestamp.now()
         ).dt.total_seconds() // 60
-        df.loc[df["time_remaining"] < 0, "time_remaining"] = (
-            0  # Ensure no negative times
-        )
+        df.loc[
+            df["time_remaining"] < 0, "time_remaining"
+        ] = 0  # Ensure no negative times
         df["depTime"] = df["depTime"].dt.strftime("%H:%M")
         df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
 
