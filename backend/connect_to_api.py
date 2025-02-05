@@ -7,7 +7,7 @@ class ResRobot:
 
     def trips(self, origin_id=740000001, destination_id=740098001):
         """origing_id and destination_id can be found from Stop lookup API"""
-        url = f"https://api.resrobot.se/v2.1/trip?format=json&originId={origin_id}&destId={destination_id}&passlist=true&showPassingPoints=true&accessId={self.API_KEY}"  # noqa: E501
+        url = f"https://api.resrobot.se/v2.1/trip?format=json&originId={origin_id}&destId={destination_id}&numF=6&passlist=true&showPassingPoints=true&accessId={self.API_KEY}"  # noqa: E501
 
         try:
             response = requests.get(url)
@@ -29,7 +29,7 @@ class ResRobot:
 
             # returns None if extId doesn't exist
             if stop_data.get("extId"):
-                print(f"{stop_data['name']:<50} {stop_data['extId']}")
+                print(f"{stop_data.get('name'):<50} {stop_data['extId']}")
 
     def timetable_departure(self, location_id=740015565):
         url = f"https://api.resrobot.se/v2.1/departureBoard?id={location_id}&format=json&accessId={self.API_KEY}"
