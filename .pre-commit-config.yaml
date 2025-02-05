@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 23.12.1  # Use the latest version of Black
+    rev: 24.10.0  # Use the latest version of Black
     hooks:
       - id: black
 
