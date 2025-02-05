@@ -9,6 +9,21 @@ class DepartureBoard:
     def __init__(self, api_client):
         self.api_client = api_client
 
+    # map transportations with right icon
+    def map_transport_icon(self, transport_type):
+        transport_type = transport_type.lower()
+
+        if "buss" in transport_type:
+            return "🚌"
+        elif "tåg" in transport_type:
+            return "🚆"
+        elif "spårväg" in transport_type or "spårvagn" in transport_type:
+            return "🚋"
+        elif "taxi" in transport_type:
+            return "🚖"
+        else:
+            return " "
+
     def get_departures(self, stop_id):
         # Fetch departures from the API for a given stop ID
         data = self.api_client.timetable_departure(stop_id)
@@ -61,6 +76,7 @@ class DepartureBoard:
 
         # Convert to DataFrame
         df = pd.DataFrame(filtered_departures)
+
         df = df.rename(
             columns={
                 "line_number": "Linje",
