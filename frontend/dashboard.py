@@ -8,9 +8,11 @@ from backend.connect_to_api import ResRobot, get_weather
 from backend.departure_board import DepartureBoard
 from backend.trips import TripPlanner
 
+# Default Configuration
 DEFAULT_COORDS = {"lat": 57.7089, "lon": 11.9746}
 OPEN_WEATHER_API_KEY = st.secrets["api"]["OPEN_WEATHER_API_KEY"]
 
+# Streamlit UI Styling
 st.markdown(
     """
     <style>
@@ -43,27 +45,54 @@ st.markdown(
 
 @st.cache_data
 def fetch_timetable(origin_id, destination_id):
+    """Fetches timetable from the API."""
+    if not origin_id or not destination_id:
+        return []  # Fix: Return an empty list instead of None
     tp = TripPlanner(origin_id, destination_id)
-    return tp.trips_for_next_hour()
+    return tp.trips_for_next_hour() or []
 
 
-def display_default_map():
-    folium_map = folium.Map(
-        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], zoom_start=12
-    )
-    folium.Marker(
-        location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], popup="Gothenburg"
-    ).add_to(folium_map)
-    st.session_state.map_html = folium_map._repr_html_()
+def initialize_session_state():
+    """Ensures required session state variables are initialized."""
+    for key in [
+        "origin_id",
+        "destination_id",
+        "origin_stops",
+        "destination_stops",
+        "selected_trip",
+        "map_html",
+        "timetable",
+    ]:
+        if key not in st.session_state:
+            st.session_state[key] = (
+                None
+                if key in ["origin_id", "destination_id", "timetable", "selected_trip"]
+                else []
+            )
+
+
+def display_default_map_if_needed():
+    """Displays the default map if no trip is selected."""
+    if not st.session_state.map_html:
+        folium_map = folium.Map(
+            location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], zoom_start=12
+        )
+        folium.Marker(
+            location=[DEFAULT_COORDS["lat"], DEFAULT_COORDS["lon"]], popup="Gothenburg"
+        ).add_to(folium_map)
+        st.session_state.map_html = folium_map._repr_html_()
 
 
 def display_map_with_trip(trip):
+    """Displays a map with markers and routes for a selected trip."""
     if trip:
         stops = trip["df_stops"]
         first_stop = stops.iloc[0]
+
         folium_map = folium.Map(
             location=[first_stop["lat"], first_stop["lon"]], zoom_start=12
         )
+
         coordinates = []
         for _, stop in stops.iterrows():
             folium.Marker(
@@ -71,14 +100,64 @@ def display_map_with_trip(trip):
                 popup=f"{stop['name']} - Avgång: {stop['depTime']}",
             ).add_to(folium_map)
             coordinates.append([stop["lat"], stop["lon"]])
+
         folium.PolyLine(
             locations=coordinates, color="blue", weight=5, opacity=0.7
         ).add_to(folium_map)
         st.session_state.map_html = folium_map._repr_html_()
 
 
-def render_map():
-    st.components.v1.html(st.session_state.map_html, height=500)
+def handle_search_stops(origin_name, destination_name):
+    """Handles searching for stops based on user input."""
+    if st.button("🔍 Sök hållplatser", key="search_stops"):
+        r = ResRobot()
+        st.session_state.origin_stops = r.lookup_stop(origin_name) or []
+        st.session_state.destination_stops = r.lookup_stop(destination_name) or []
+
+    if st.session_state.origin_stops:
+        selected_origin = st.selectbox(
+            "Välj ursprungshållplats:",
+            st.session_state.origin_stops,
+            format_func=lambda s: s["name"],
+            key="origin_choice",
+        )
+        st.session_state.origin_id = selected_origin["id"]
+
+    if st.session_state.destination_stops:
+        selected_destination = st.selectbox(
+            "Välj destinationshållplats:",
+            st.session_state.destination_stops,
+            format_func=lambda s: s["name"],
+            key="destination_choice",
+        )
+        st.session_state.destination_id = selected_destination["id"]
+
+
+def handle_fetch_timetable():
+    """Fetches timetable for selected stops and prevents redundant API calls."""
+    if not st.session_state.origin_id or not st.session_state.destination_id:
+        return
+
+    if st.button("📅 Hämta tidtabell", key="fetch_schedule"):
+        st.session_state.timetable = fetch_timetable(
+            st.session_state.origin_id, st.session_state.destination_id
+        )
+        st.session_state.selected_trip = None
+
+
+def handle_trip_selection():
+    """Handles selection of a trip from the fetched timetable."""
+    if not st.session_state.timetable:
+        return
+
+    st.write("### 📅 Välj en resa:")
+    for index, t in enumerate(st.session_state.timetable):
+        label = t.get(
+            "label", "Okänd resa"
+        )  # Fix: Avoid KeyError if 'label' is missing
+        if st.button(label, key=f"trip_{index}"):
+            st.session_state.selected_trip = t
+            display_map_with_trip(t)
 
 
 def weather_section(city_name):
@@ -102,184 +181,125 @@ def weather_section(city_name):
         st.error(f"Kunde inte hämta vädret för {city_name}.")
 
 
-def home_tab():
-    st.title("Trafikapp")
-    st.write(
-        "Välkommen till vårt grupparbete för en väl fungerande trafikapp! Vi som har jobbat på den är Anna, Björn och Brian"
+def format_trip_dataframe(df):
+    """Formats trip DataFrame with readable time and calculates time remaining."""
+    df["depTime"] = pd.to_datetime(df["depTime"], format="%H:%M:%S", errors="coerce")
+    df["arrTime"] = pd.to_datetime(df["arrTime"], format="%H:%M:%S", errors="coerce")
+
+    df["time_remaining"] = (df["depTime"] - pd.Timestamp.now()).dt.total_seconds() // 60
+    df.loc[df["time_remaining"] < 0, "time_remaining"] = 0  # Ensure no negative times
+
+    df["depTime"] = df["depTime"].dt.strftime("%H:%M")
+    df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
+
+    return df.rename(
+        columns={
+            "name": "Namn",
+            "depTime": "Avgångstid",
+            "arrTime": "Ankomsttid",
+            "time_remaining": "Tid kvar (min)",
+        }
     )
-    st.image(
-        "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcTdlZDVmeG1ueDZyb2k5eGNwYXNnaWp3dnY3OHJ2ajlkYzY3M3FzMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13HgwGsXF0aiGY/giphy.gif",
-        width=800,
-    )
+
+
+def display_trip_details():
+    """Displays the details of the selected trip, including transfer count and stops."""
+    trip_label = st.session_state.selected_trip.get("label", "")
+    transport_list = [segment.strip() for segment in trip_label.split("->")]
+
+    num_transfers = max(len(set(transport_list)) - 1, 0)
+    st.write(f"🚏 **Antal byten:** {num_transfers}")
+
+    df = format_trip_dataframe(st.session_state.selected_trip["df_stops"].copy())
+    num_stops = max(len(df) - 1, 0)
+    st.write(f"🛑 **Antal stopp på vägen:** {num_stops}")
+
+    st.write("### Restabell:")
+    st.dataframe(df[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]])
 
 
 def tidtabell_tab():
-    for key in [
-        "origin_id",
-        "destination_id",
-        "origin_stops",
-        "destination_stops",
-        "selected_trip",
-        "map_html",
-        "timetable",
-    ]:
-        if key not in st.session_state:
-            st.session_state[key] = (
-                None
-                if key in ["origin_id", "destination_id", "timetable", "selected_trip"]
-                else []
-            )
-    if not st.session_state.map_html:
-        display_default_map()
+    """Handles the timetable tab functionality."""
+    st.title("Tidtabell")
+    initialize_session_state()
+    display_default_map_if_needed()
+
     origin_name = st.text_input("Från:", key="origin_name")
     destination_name = st.text_input("Till:", key="destination_name")
-    if origin_name:
-        weather_section(origin_name)
-    if destination_name:
-        weather_section(destination_name)
-    if st.button("🔍 Sök hållplatser", key="search_stops"):
-        r = ResRobot()
-        if origin_name:
-            st.session_state.origin_stops = r.lookup_stop(origin_name) or []
-        if destination_name:
-            st.session_state.destination_stops = r.lookup_stop(destination_name) or []
-    if st.session_state.origin_stops:
-        selected_origin = st.selectbox(
-            "Välj ursprungshållplats:",
-            st.session_state.origin_stops,
-            format_func=lambda s: s["name"],
-            key="origin_choice",
-        )
-        st.session_state.origin_id = selected_origin["id"]
-    if st.session_state.destination_stops:
-        selected_destination = st.selectbox(
-            "Välj destinationshållplats:",
-            st.session_state.destination_stops,
-            format_func=lambda s: s["name"],
-            key="destination_choice",
-        )
-        st.session_state.destination_id = selected_destination["id"]
-    if st.session_state.origin_id and st.session_state.destination_id:
-        if st.button("📅 Hämta tidtabell", key="fetch_schedule"):
-            st.session_state.timetable = fetch_timetable(
-                st.session_state.origin_id, st.session_state.destination_id
-            )
-            st.session_state.selected_trip = None
-        if st.session_state.timetable:
-            st.write("### 📅 Välj en resa:")
-            for index, t in enumerate(st.session_state.timetable):
-                label = t["label"]
-                if st.button(label, key=f"trip_{index}"):
-                    st.session_state.selected_trip = t
-                    display_map_with_trip(t)
-    render_map()
+
+    handle_search_stops(origin_name, destination_name)
+    handle_fetch_timetable()
+    handle_trip_selection()
 
     if st.session_state.selected_trip:
-        trip_label = st.session_state.selected_trip.get("label", "")
-        transport_list = [segment.strip() for segment in trip_label.split("->")]
-
-        # Count unique transport changes
-        num_transfers = max(len(set(transport_list)) - 1, 0)
-        st.write(f"🚏 **Antal byten:** {num_transfers}")
-
-        # ✅ Define df before using it!
-        df = st.session_state.selected_trip["df_stops"].copy()
-
-        df["depTime"] = pd.to_datetime(df["depTime"], errors="coerce")
-        df["arrTime"] = pd.to_datetime(df["arrTime"], errors="coerce")
-        df["time_remaining"] = (
-            df["depTime"] - pd.Timestamp.now()
-        ).dt.total_seconds() // 60
-        df.loc[df["time_remaining"] < 0, "time_remaining"] = (
-            0  # Ensure no negative times
-        )
-
-        df["depTime"] = df["depTime"].dt.strftime("%H:%M")
-        df["arrTime"] = df["arrTime"].dt.strftime("%H:%M")
-
-        df_renamed = df.rename(
-            columns={
-                "name": "Namn",
-                "depTime": "Avgångstid",
-                "arrTime": "Ankomsttid",
-                "time_remaining": "Tid kvar (min)",
-            }
-        )
-
-        # ✅ Count the number of stops
-        num_stops = max(len(df_renamed) - 1, 0)
-
-        st.write(
-            f"🛑 **Antal stopp på vägen:** {num_stops}"
-        )  # ✅ New line to display the stop count
-
-        st.write("### Restabell:")
-        st.dataframe(df_renamed[["Namn", "Avgångstid", "Ankomsttid", "Tid kvar (min)"]])
+        display_trip_details()
 
 
 def avgangstavla_tab():
+    """Handles the departure board functionality in the Streamlit app."""
     resrobot = ResRobot()
     departure_board = DepartureBoard(resrobot)
     stop_name = st.text_input(
         "Sök hållplats:", placeholder="Skriv för att söka...", key="dep_stop_name"
     )
-    if stop_name:
-        possible_stops = resrobot.lookup_stop(stop_name)
 
-        if possible_stops:
-            selected_stop = st.selectbox(
-                "Välj hållplats:",
-                possible_stops,
-                format_func=lambda stop: stop["name"],
-                key="selected_stop_departure",
-            )
+    if not stop_name:
+        return
 
-            if selected_stop:
-                stop_id = selected_stop["id"]
+    possible_stops = resrobot.lookup_stop(stop_name)
+    if not possible_stops:
+        st.error(f"Inga matchande hållplatser hittades för '{stop_name}'.")
+        return
 
-                if st.button("Visa avgångar", key="show_departures"):
-                    df = departure_board.get_departures_dataframe(stop_id)
+    # User Selection: Choose stop from results
+    selected_stop = st.selectbox(
+        "Välj hållplats:",
+        possible_stops,
+        format_func=lambda stop: stop["name"],
+        key="selected_stop_departure",
+    )
 
-                    if df is not None:
-                        st.write("### Avgångar:")
-                        # CSS to left-align column names
-                        st.markdown(
-                            """
-                            <style>
-                                th {
-                                    text-align: left !important;
-                                }
-                                td {
-                                    text-align: left !important;
-                                }
-                            </style>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+    if not selected_stop:
+        st.error("Ingen hållplats valdes. Välj en från listan.")
+        return
 
-                        # Add icons
-                        df["Typ"] = df["Typ"].apply(
-                            lambda x: departure_board.map_transport_icon(x) + " " + x
-                        )
+    stop_id = selected_stop["id"]
 
-                        # Show table with HTML
-                        st.markdown(
-                            df.to_html(escape=False, index=False),
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.error("Inga avgångar inom den närmsta timmen hittades.")
-            else:
-                st.error("Ingen hållplats valdes. Välj en från listan.")
-        else:
-            st.error(f"Inga matchande hållplatser hittades för '{stop_name}'.")
+    if st.button("Visa avgångar", key="show_departures"):
+        df = departure_board.get_departures_dataframe(stop_id)
+        if df is None or df.empty:
+            st.error("Inga avgångar inom den närmsta timmen hittades.")
+            return
+
+        st.write("### Avgångar:")
+        st.markdown(
+            """
+            <style>
+                th, td { text-align: left !important; }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        df["Typ"] = df["Typ"].apply(
+            lambda x: departure_board.map_transport_icon(x) + " " + x
+        )
+        st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 
 def weather_tab():
+    """Handles the weather tab."""
     st.title("Väder")
-    city = st.text_input("Ange stad:")
+    city = st.text_input("Ange stad:", key="weather_city")
     if city:
         weather_section(city)
+
+
+def home_tab():
+    st.title("Trafikapp")
+    st.write(
+        "Välkommen till vårt grupparbete för en väl fungerande trafikapp! Vi som har jobbat på den är Anna, Björn och Brian"
+    )
+    st.image("https://media4.giphy.com/media/13HgwGsXF0aiGY/giphy.gif", width=800)
 
 
 def main():
