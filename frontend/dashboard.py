@@ -202,6 +202,12 @@ def format_trip_dataframe(df):
     )
 
 
+def render_map():
+    """Renders the stored map HTML inside the Streamlit app."""
+    if "map_html" in st.session_state and st.session_state.map_html:
+        st.components.v1.html(st.session_state.map_html, height=500)
+
+
 def display_trip_details():
     """Displays the details of the selected trip, including transfer count and stops."""
     trip_label = st.session_state.selected_trip.get("label", "")
@@ -227,9 +233,15 @@ def tidtabell_tab():
     origin_name = st.text_input("Från:", key="origin_name")
     destination_name = st.text_input("Till:", key="destination_name")
 
+    if origin_name:
+        weather_section(origin_name)
+    if destination_name:
+        weather_section(destination_name)
+
     handle_search_stops(origin_name, destination_name)
     handle_fetch_timetable()
     handle_trip_selection()
+    render_map()
 
     if st.session_state.selected_trip:
         display_trip_details()
